@@ -1,0 +1,688 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MARKETIQ — Marketing Intelligence Platform</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.0"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+*{box-sizing:border-box}
+:root{
+  --bg:#f5f7fb;--panel:#fff;--text:#172033;--muted:#718096;
+  --line:#e8edf4;--accent:#5b5ce2;--accent2:#7778ef;
+  --good:#159570;--danger:#dc5b67;--warning:#d99016;
+}
+body{margin:0;font-family:Inter,Segoe UI,Arial,sans-serif;background:var(--bg);color:var(--text)}
+.app{display:flex;min-height:100vh}
+.sidebar{width:245px;background:#11172a;color:#fff;padding:25px 16px;position:fixed;inset:0 auto 0 0}
+.logo{font-size:22px;font-weight:800;letter-spacing:.5px;padding:0 12px 28px}
+.logo span{color:#8889ff}
+.nav button{width:100%;border:0;background:transparent;color:#aeb6cc;text-align:left;padding:13px 14px;border-radius:10px;margin:3px 0;cursor:pointer;font-size:14px}
+.nav button.active,.nav button:hover{background:#252c46;color:#fff}
+.sidebar-bottom{position:absolute;bottom:24px;left:25px;right:25px;color:#737d96;font-size:11px}
+.main{margin-left:245px;width:calc(100% - 245px);padding:28px 32px}
+.topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:25px}
+.title h1{margin:0;font-size:25px}.title p{margin:5px 0 0;color:var(--muted);font-size:13px}
+.actions{display:flex;gap:10px;align-items:center}
+.upload-label,.ghost{background:#fff;border:1px solid var(--line);border-radius:9px;padding:10px 14px;font-size:13px;cursor:pointer}
+.upload-label{background:var(--accent);color:#fff;border-color:var(--accent);font-weight:600}
+#fileInput{display:none}
+.status{font-size:12px;color:var(--muted)}
+.period-filter{display:flex;align-items:end;gap:10px;flex-wrap:wrap;background:#fff;border:1px solid var(--line);border-radius:12px;padding:13px 15px;margin:-8px 0 20px}
+.period-filter label{display:flex;flex-direction:column;gap:5px;color:var(--muted);font-size:11px}
+.period-filter input{padding:8px 9px;border:1px solid var(--line);border-radius:7px;color:var(--text);font:inherit}
+.period-caption{font-size:12px;font-weight:650;margin-right:5px}
+.method-card{margin-top:18px}.method-card summary{cursor:pointer;font-weight:650}.method-card p{font-size:12px;color:var(--muted);line-height:1.6}
+.quality-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:12px}
+.quality-item{padding:11px;border-radius:9px;background:#f7f8fb}.quality-item b{display:block;font-size:15px}.quality-item span{font-size:10px;color:var(--muted)}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:20px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:19px;box-shadow:0 2px 8px rgba(20,30,60,.025)}
+.kpi-label{color:var(--muted);font-size:12px}.kpi-value{font-size:25px;font-weight:750;margin:8px 0 5px}.kpi-note{font-size:11px;color:var(--good)}
+.grid{display:grid;grid-template-columns:1.55fr 1fr;gap:18px;margin-bottom:18px}
+.grid.equal{grid-template-columns:1fr 1fr}
+.card-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
+.card-head h3{margin:0;font-size:15px}.card-head span{font-size:11px;color:var(--muted)}
+.chart-wrap{height:285px;position:relative}
+.table-wrap{overflow:auto;max-height:320px}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th,td{text-align:left;padding:10px;border-bottom:1px solid var(--line)}
+th{color:var(--muted);font-weight:600}
+.page{display:none}.page.active{display:block}
+.hero{background:linear-gradient(135deg,#171d35,#30365d);color:#fff;border-radius:16px;padding:26px;margin-bottom:20px}
+.hero h2{margin:0 0 7px;font-size:22px}.hero p{margin:0;color:#cbd1e3;font-size:13px;max-width:700px}
+.insight{padding:15px;border-radius:11px;background:#f7f8ff;border-left:4px solid var(--accent);margin:9px 0;font-size:13px;line-height:1.5}
+.segment-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.segment{padding:16px;border:1px solid var(--line);border-radius:12px;background:#fff}.segment b{display:block;font-size:19px;margin-bottom:5px}.segment span{font-size:12px;color:var(--muted)}
+.campaign-grid{display:grid;grid-template-columns:1.1fr 1fr;gap:18px;margin-bottom:18px}
+.campaign-fields{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.campaign-fields label{display:flex;flex-direction:column;gap:6px;font-size:12px;color:var(--muted)}
+.campaign-fields input,.campaign-fields select{width:100%;padding:10px 11px;border:1px solid var(--line);border-radius:8px;color:var(--text);font:inherit;background:#fff}
+.campaign-actions{display:flex;gap:9px;margin-top:14px}
+.campaign-note{font-size:11px;color:var(--muted);line-height:1.5;margin:12px 0 0}
+.metric-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+.metric{padding:15px;border:1px solid var(--line);border-radius:11px;background:#fff}
+.metric-label{font-size:11px;color:var(--muted)}.metric-value{font-size:21px;font-weight:750;margin-top:7px}
+.metric-formula{font-size:10px;color:var(--muted);margin-top:5px}
+.playbook-wrap{overflow:auto}
+.playbook{min-width:900px}
+.priority{display:inline-block;border-radius:999px;padding:4px 8px;font-size:10px;font-weight:700}
+.priority.high{background:#fff0e6;color:#a94b12}.priority.medium{background:#f0efff;color:#5750c7}.priority.low{background:#edf6f2;color:#24745b}
+.empty{text-align:center;padding:60px 20px;color:var(--muted)}
+@media(max-width:1000px){.sidebar{width:190px}.main{margin-left:190px;width:calc(100% - 190px)}.kpis,.segment-grid{grid-template-columns:repeat(2,1fr)}.grid,.grid.equal,.campaign-grid{grid-template-columns:1fr}}
+@media(max-width:700px){.sidebar{position:static;width:100%;height:auto}.sidebar-bottom{display:none}.app{display:block}.main{margin:0;width:100%;padding:18px}.kpis,.quality-grid{grid-template-columns:1fr 1fr}.campaign-fields{grid-template-columns:1fr}.topbar{align-items:flex-start;gap:15px;flex-direction:column}}
+@media print{
+ @page{size:A4 landscape;margin:12mm}
+ body{background:#fff!important;color:#172033!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+ .sidebar{display:none!important}.app{display:block!important}.main{margin:0!important;padding:0!important;width:100%!important}
+ .topbar{margin:0 0 12px!important;padding-bottom:10px;border-bottom:1px solid #cfd5df}
+ .actions .upload-label,.actions #exportPdfButton{display:none!important}
+ .period-filter{margin:0 0 12px!important;padding:8px 10px!important}
+ .period-filter button{display:none!important}.period-filter input{border:0!important;padding:0!important}
+ .page,.page.active{display:block!important;break-before:page;page-break-before:always}
+ #overview{break-before:auto;page-break-before:auto}
+ .hero,.card{box-shadow:none!important;break-inside:avoid;page-break-inside:avoid}
+ .chart-wrap{height:220px!important}
+ .table-wrap{max-height:none!important;overflow:visible!important}
+ .campaign-actions,.campaign-log .ghost{display:none!important}
+ .campaign-fields input,.campaign-fields select{border:0!important;padding:3px 0!important}
+ #printMeta{display:block!important;color:#5c6678;font-size:10px;margin:-4px 0 12px}
+}
+</style>
+</head>
+<body>
+<div class="app">
+<aside class="sidebar">
+  <div class="logo">MARKET<span>IQ</span></div>
+  <div class="nav">
+    <button class="active" onclick="showPage('overview',this)">◉ &nbsp; Overview</button>
+    <button onclick="showPage('sales',this)">▥ &nbsp; Sales Intelligence</button>
+    <button onclick="showPage('customers',this)">♙ &nbsp; Customer Intelligence</button>
+    <button onclick="showPage('products',this)">▦ &nbsp; Product Intelligence</button>
+    <button onclick="showPage('geo',this)">⌖ &nbsp; Regional Intelligence</button>
+    <button onclick="showPage('marketing',this)">✦ &nbsp; Marketing Intelligence</button>
+    <button onclick="showPage('ai',this)">✧ &nbsp; QueryBot</button>
+  </div>
+  <div class="sidebar-bottom">V2.2 • QueryBot</div>
+</aside>
+
+<main class="main">
+<header class="topbar">
+  <div class="title"><h1 id="pageTitle">Executive Overview</h1><p id="pageSub">Your business performance at a glance.</p></div>
+  <div class="actions">
+    <span class="status" id="dataStatus">Upload a dataset to begin</span>
+    <button class="ghost" id="exportPdfButton" onclick="exportPdf()">Export PDF</button>
+    <label class="upload-label">Upload Excel / CSV<input id="fileInput" type="file" accept=".xlsx,.xls,.csv"></label>
+  </div>
+</header>
+<div id="printMeta" hidden></div>
+<div class="period-filter" id="periodFilter" hidden>
+  <span class="period-caption">Date range</span>
+  <label>From<input id="dateFrom" type="date"></label>
+  <label>To<input id="dateTo" type="date"></label>
+  <button class="ghost" onclick="applyDateRange()">Apply</button>
+  <button class="ghost" onclick="resetDateRange()">Reset</button>
+  <span class="status" id="periodStatus"></span>
+</div>
+
+<section id="overview" class="page active">
+  <div class="hero"><h2>Marketing intelligence, in one place.</h2><p>MARKETIQ turns transaction data into sales, customer and marketing insights. Upload a compatible dataset anytime to refresh the dashboard.</p></div>
+  <div class="kpis">
+    <div class="card"><div class="kpi-label">Total Revenue</div><div class="kpi-value" id="kRevenue">—</div><div class="kpi-note">Net sales after cancellations</div></div>
+    <div class="card"><div class="kpi-label">Orders</div><div class="kpi-value" id="kOrders">—</div><div class="kpi-note">Unique completed invoices</div></div>
+    <div class="card"><div class="kpi-label">Customers</div><div class="kpi-value" id="kCustomers">—</div><div class="kpi-note">Identified customers</div></div>
+    <div class="card"><div class="kpi-label">Average Order Value</div><div class="kpi-value" id="kAov">—</div><div class="kpi-note">Revenue ÷ completed orders</div></div>
+  </div>
+  <div class="grid">
+    <div class="card"><div class="card-head"><h3>Monthly Revenue</h3><span>Net sales</span></div><div class="chart-wrap"><canvas id="monthlyChart"></canvas></div></div>
+    <div class="card"><div class="card-head"><h3>Revenue by Region</h3><span>Top regions</span></div><div class="chart-wrap"><canvas id="countryChart"></canvas></div></div>
+  </div>
+  <div class="grid equal">
+    <div class="card"><div class="card-head"><h3>Top Products</h3><span>By revenue</span></div><div class="table-wrap"><table><thead><tr><th>Product</th><th>Revenue</th><th>Units</th></tr></thead><tbody id="topProducts"></tbody></table></div></div>
+    <div class="card"><div class="card-head"><h3>Automatic Insights</h3><span>V1 rules engine</span></div><div id="insights"></div></div>
+  </div>
+  <details class="card method-card">
+    <summary>Data scope, quality and metric definitions</summary>
+    <p><b>Net revenue</b> is quantity × unit price for non-cancellation invoices with positive quantity and price. Cancellation invoices and non-positive lines are excluded. Orders are unique completed invoice numbers. Average order value is net revenue divided by completed orders. Customer metrics use rows with an identified CustomerID. RFM recency is measured from the latest eligible transaction in the selected date range; frequency counts unique invoices; monetary value is net revenue.</p>
+    <div id="qualitySummary" class="quality-grid"><div class="quality-item"><b>—</b><span>Upload a dataset to inspect its quality</span></div></div>
+  </details>
+</section>
+
+<section id="sales" class="page">
+  <div class="kpis"><div class="card"><div class="kpi-label">Net Revenue</div><div class="kpi-value" id="sRevenue">—</div></div><div class="card"><div class="kpi-label">Completed Orders</div><div class="kpi-value" id="sOrders">—</div></div><div class="card"><div class="kpi-label">Units Sold</div><div class="kpi-value" id="sUnits">—</div></div><div class="card"><div class="kpi-label">Avg. Items / Order</div><div class="kpi-value" id="sItems">—</div></div></div>
+  <div class="grid"><div class="card"><div class="card-head"><h3>Sales Trend</h3></div><div class="chart-wrap"><canvas id="salesTrend"></canvas></div></div><div class="card"><div class="card-head"><h3>Top Regions</h3></div><div class="chart-wrap"><canvas id="salesCountry"></canvas></div></div></div>
+</section>
+
+<section id="customers" class="page">
+  <div class="hero"><h2>Customer Intelligence</h2><p>Turn purchase behavior into actionable customer segments using Recency, Frequency and Monetary value.</p></div>
+  <div class="kpis">
+    <div class="card"><div class="kpi-label">Average Customer Value</div><div class="kpi-value" id="avgCustomerValue">—</div><div class="kpi-note">Revenue per identified customer</div></div>
+    <div class="card"><div class="kpi-label">Repeat Customer Rate</div><div class="kpi-value" id="repeatRate">—</div><div class="kpi-note">Customers with 2+ orders</div></div>
+    <div class="card"><div class="kpi-label">At-Risk Revenue</div><div class="kpi-value" id="riskRevenue">—</div><div class="kpi-note">Revenue from at-risk customers</div></div>
+    <div class="card"><div class="kpi-label">Top Customer Value</div><div class="kpi-value" id="topCustomerValue">—</div><div class="kpi-note">Highest customer spend</div></div>
+  </div>
+  <div class="grid equal">
+    <div class="card"><div class="card-head"><h3>Customer Segments</h3><span>RFM distribution</span></div><div class="chart-wrap"><canvas id="segmentChart"></canvas></div></div>
+    <div class="card"><div class="card-head"><h3>Marketing Actions</h3><span>Segment playbook</span></div><div id="segmentActions"></div></div>
+  </div>
+  <div class="segment-grid">
+    <div class="segment"><b id="champions">—</b><span>Champions</span></div><div class="segment"><b id="loyal">—</b><span>Loyal Customers</span></div><div class="segment"><b id="potential">—</b><span>Potential Customers</span></div><div class="segment"><b id="risk">—</b><span>At-Risk Customers</span></div>
+  </div>
+  <div class="card" style="margin-top:18px"><div class="card-head"><h3>Customer Value — RFM Analysis</h3><span>Top 100 customers</span></div><div class="table-wrap"><table><thead><tr><th>Customer</th><th>Recency</th><th>Frequency</th><th>Monetary</th><th>R Score</th><th>F Score</th><th>M Score</th><th>Segment</th></tr></thead><tbody id="customerTable"></tbody></table></div></div>
+</section>
+
+<section id="products" class="page">
+  <div class="hero"><h2>Product Intelligence</h2><p>Identify your strongest products, revenue drivers and products that may need attention.</p></div>
+  <div class="card"><div class="card-head"><h3>Product Performance</h3><span>Top 25 by revenue</span></div><div class="table-wrap"><table><thead><tr><th>Product</th><th>Revenue</th><th>Units</th><th>Orders</th></tr></thead><tbody id="productTable"></tbody></table></div></div>
+</section>
+
+<section id="geo" class="page">
+  <div class="hero"><h2>Regional Intelligence</h2><p>Compare areas and identify where revenue is concentrated. Uses Region when available, then State, Province, or Country.</p></div>
+  <div class="card"><div class="card-head"><h3>Regional Performance</h3><span>Revenue ranking</span></div><div class="table-wrap"><table><thead><tr><th>Region</th><th>Revenue</th><th>Orders</th><th>Customers</th><th>Share</th></tr></thead><tbody id="geoTable"></tbody></table></div></div>
+</section>
+
+<section id="marketing" class="page">
+  <div class="hero"><h2>Marketing Intelligence</h2><p>Turn purchase behavior into practical segment actions, then evaluate campaign results with clear performance metrics.</p></div>
+  <div class="card" style="margin-bottom:18px">
+    <div class="card-head"><h3>Segment Action Playbook</h3><span>RFM-based recommendations</span></div>
+    <p class="campaign-note">Priorities are suggested from purchase behavior and customer value. They are planning guidance, not measured campaign outcomes.</p>
+    <div id="marketingPlaybook" class="playbook-wrap empty">Upload a dataset to generate segment recommendations.</div>
+  </div>
+  <div class="campaign-grid">
+    <div class="card">
+      <div class="card-head"><h3>Campaign Planner & Results</h3><span>Plan vs actual</span></div>
+      <div class="campaign-fields">
+        <label>Campaign name<input id="campaignName" type="text" maxlength="80" placeholder="e.g. Winter win-back"></label>
+        <label>Target customer segment<select id="campaignSegment"><option value="All Customers">All Customers</option></select></label>
+        <label>Planned budget (£)<input id="campaignPlanSpend" type="number" min="0" step="0.01" placeholder="e.g. 2500"></label>
+        <label>Planned conversions<input id="campaignPlanConversions" type="number" min="0" step="1" placeholder="e.g. 180"></label>
+        <label>Planned revenue (£)<input id="campaignPlanRevenue" type="number" min="0" step="0.01" placeholder="e.g. 9000"></label>
+        <label>Actual spend (£)<input id="campaignSpend" type="number" min="0" step="0.01" placeholder="e.g. 2500"></label>
+        <label>Impressions<input id="campaignImpressions" type="number" min="0" step="1" placeholder="e.g. 120000"></label>
+        <label>Clicks<input id="campaignClicks" type="number" min="0" step="1" placeholder="e.g. 3600"></label>
+        <label>Actual conversions / orders<input id="campaignConversions" type="number" min="0" step="1" placeholder="e.g. 180"></label>
+        <label>Actual attributed revenue (£)<input id="campaignRevenue" type="number" min="0" step="0.01" placeholder="e.g. 9000"></label>
+        <label>Contribution margin (%) — optional<input id="campaignMarginPct" type="number" min="0" max="100" step="0.1" placeholder="e.g. 45"></label>
+      </div>
+      <div class="campaign-actions"><button class="upload-label" onclick="calculateCampaign()">Calculate results</button><button class="ghost" onclick="saveCampaignRecord()">Save campaign</button><button class="ghost" onclick="resetCampaign()">Clear</button></div>
+      <p class="campaign-note">Campaigns are saved in this browser only. Revenue-based ROI does not subtract product or fulfillment costs. Enter a contribution margin to calculate contribution-based ROI.</p>
+    </div>
+    <div class="card">
+      <div class="card-head"><h3>Campaign Performance</h3><span>Calculated from your inputs</span></div>
+      <div class="metric-grid">
+        <div class="metric"><div class="metric-label">Click-through rate</div><div class="metric-value" id="campaignCtr">—</div><div class="metric-formula">Clicks ÷ impressions</div></div>
+        <div class="metric"><div class="metric-label">Cost per click</div><div class="metric-value" id="campaignCpc">—</div><div class="metric-formula">Spend ÷ clicks</div></div>
+        <div class="metric"><div class="metric-label">Cost per acquisition</div><div class="metric-value" id="campaignCac">—</div><div class="metric-formula">Spend ÷ conversions</div></div>
+        <div class="metric"><div class="metric-label">Return on ad spend</div><div class="metric-value" id="campaignRoas">—</div><div class="metric-formula">Attributed revenue ÷ spend</div></div>
+        <div class="metric"><div class="metric-label">Revenue-based ROI</div><div class="metric-value" id="campaignRoi">—</div><div class="metric-formula">(Revenue − spend) ÷ spend</div></div>
+        <div class="metric"><div class="metric-label">Contribution ROI</div><div class="metric-value" id="campaignContributionRoi">—</div><div class="metric-formula">(Revenue × margin − spend) ÷ spend</div></div>
+        <div class="metric"><div class="metric-label">Budget variance</div><div class="metric-value" id="campaignBudgetVariance">—</div><div class="metric-formula">Actual spend − planned budget</div></div>
+        <div class="metric"><div class="metric-label">Revenue variance</div><div class="metric-value" id="campaignRevenueVariance">—</div><div class="metric-formula">Actual revenue − planned revenue</div></div>
+        <div class="metric"><div class="metric-label">Conversion variance</div><div class="metric-value" id="campaignConversionVariance">—</div><div class="metric-formula">Actual conversions − planned conversions</div></div>
+        <div class="metric"><div class="metric-label">Validation</div><div class="metric-value" style="font-size:13px" id="campaignStatus">Waiting for inputs</div></div>
+      </div>
+    </div>
+  </div>
+  <div class="card" style="margin-bottom:18px">
+    <div class="card-head"><h3>Campaign Outcome Log</h3><button class="ghost" onclick="exportCampaignLog()">Export CSV</button></div>
+    <p class="campaign-note">Saved campaign summaries stay in this browser and contain no customer-level records.</p>
+    <div class="table-wrap"><table><thead><tr><th>Campaign</th><th>Segment</th><th>Budget plan</th><th>Spend actual</th><th>Revenue plan</th><th>Revenue actual</th><th>Revenue variance</th><th>Conversions plan</th><th>Conversions actual</th><th>ROAS</th><th>Saved</th></tr></thead><tbody id="campaignLog"></tbody></table></div>
+  </div>
+  <div id="marketingInsights"></div>
+</section>
+
+<section id="ai" class="page">
+  <div class="hero"><h2>QueryBot</h2><p>Ask questions about revenue, sales trends, products, regions and customer segments. QueryBot calculates answers locally from the uploaded transactions; it does not use a connected AI service.</p></div>
+  <div class="card">
+    <div style="font-weight:700;margin-bottom:10px">Ask MARKETIQ</div>
+    <div style="display:flex;gap:8px"><input id="question" placeholder="e.g. Which region generated the most revenue?" style="flex:1;padding:12px;border:1px solid var(--line);border-radius:9px" onkeydown="if(event.key==='Enter')askAdvisor()"><button class="upload-label" onclick="askAdvisor()">Ask QueryBot</button></div>
+    <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:14px">
+      <button class="ghost" onclick="suggestAdvisor('Which region generated the most revenue?')">Top region</button>
+      <button class="ghost" onclick="suggestAdvisor('How is monthly revenue trending?')">Revenue trend</button>
+      <button class="ghost" onclick="suggestAdvisor('Which products lead by revenue?')">Top products</button>
+      <button class="ghost" onclick="suggestAdvisor('How many customers are at risk?')">At-risk customers</button>
+      <button class="ghost" onclick="suggestAdvisor('What is the average order value?')">Average order value</button>
+    </div>
+    <div id="answer" aria-live="polite" style="margin-top:18px"><div class="insight">Upload a dataset to ask MARKETIQ about your business.</div></div>
+    <p class="campaign-note">QueryBot uses the uploaded transaction data only and follows built-in query rules. It does not connect to an external AI service.</p>
+  </div>
+</section>
+</main>
+</div>
+
+<script>
+let data=[], charts={}, rfmSummary=[], customerSummary={}, advisorCache=null, sourceQuality={}, dataMinDate=null, dataMaxDate=null, renderVersion=0;
+
+const money=n=>'£'+Math.round(n).toLocaleString('en-GB');
+const num=n=>Math.round(n).toLocaleString();
+function exportPdf(){
+ const from=document.getElementById('dateFrom').value,to=document.getElementById('dateTo').value;
+ const range=from&&to?`${from} to ${to}`:'All available data';
+ document.getElementById('printMeta').textContent=`MARKETIQ report • Date range: ${range} • Generated: ${new Date().toLocaleString()}`;
+ window.print();
+}
+function showPage(id,btn){
+ document.querySelectorAll('.page').forEach(x=>x.classList.remove('active'));
+ document.getElementById(id).classList.add('active');
+ document.querySelectorAll('.nav button').forEach(x=>x.classList.remove('active')); btn.classList.add('active');
+ const titles={overview:['Executive Overview','Your business performance at a glance.'],sales:['Sales Intelligence','Revenue, orders and sales trends.'],customers:['Customer Intelligence','RFM-based customer behavior and value.'],products:['Product Intelligence','Your strongest products and revenue drivers.'],geo:['Regional Intelligence','Performance across regions.'],marketing:['Marketing Intelligence','Turn customer behavior into marketing action.'],ai:['QueryBot','Ask questions about your business data.']};
+ document.getElementById('pageTitle').textContent=titles[id][0];document.getElementById('pageSub').textContent=titles[id][1];
+ requestAnimationFrame(()=>requestAnimationFrame(()=>{
+   Object.values(charts).forEach(c=>{
+     try{
+       if(c.canvas.closest('.page')?.classList.contains('active')){c.resize();c.update('none')}
+     }catch(e){}
+   });
+ }));
+}
+function parseDate(v){
+ if(v==null||v==='')return new Date(NaN);
+ if(v instanceof Date)return v;
+ if(typeof v==='number'){
+   const utc=new Date(Date.UTC(1899,11,30)+v*86400000);
+   return new Date(utc.getUTCFullYear(),utc.getUTCMonth(),utc.getUTCDate(),utc.getUTCHours(),utc.getUTCMinutes(),utc.getUTCSeconds(),utc.getUTCMilliseconds());
+ }
+ const d=new Date(v);
+ return d;
+}
+function normalize(r){
+ const customerText=String(r.CustomerID??'').trim(),customerValue=customerText===''?null:Number(customerText);
+ const fields=Object.keys(r).reduce((out,key)=>{out[key.trim().toLowerCase()]=r[key];return out},{});
+ const region=fields.region??fields.state??fields.province??fields.country??'';
+ return {invoice:String(r.InvoiceNo??'').trim(),stock:String(r.StockCode??r.Description??'').trim(),desc:String(r.Description??'').trim(),qty:+r.Quantity||0,date:parseDate(r.InvoiceDate),price:+r.UnitPrice||0,customer:Number.isFinite(customerValue)?customerValue:null,region:String(region).trim()};
+}
+const yieldToUI=()=>new Promise(resolve=>setTimeout(resolve,0));
+function dateInputValue(d){return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`}
+function dateFromInput(value){if(!value)return null;const [y,m,d]=value.split('-').map(Number);return new Date(y,m-1,d)}
+function normalizeChunk(rows,normalized){
+ let rejected=0;
+ rows.forEach(row=>{const r=normalize(row);if(r.invoice&&r.stock&&Number.isFinite(r.date.getTime()))normalized.push(r);else rejected++});
+ return rejected;
+}
+async function process(rows){
+ const normalized=[];let rejected=0;const batchSize=15000;
+ for(let start=0;start<rows.length;start+=batchSize){
+   const end=Math.min(rows.length,start+batchSize);
+   rejected+=normalizeChunk(rows.slice(start,end),normalized);
+   document.getElementById('dataStatus').textContent=`Preparing ${num(end)} of ${num(rows.length)} rows…`;
+   await yieldToUI();
+ }
+ finishRows(normalized,rejected,rows.length);
+}
+function finishRows(normalized,rejected,sourceRows){
+ if(!normalized.length)throw new Error('No usable transaction rows were found. Check the required columns and date values.');
+ data=normalized;sourceQuality={sourceRows,usableRows:normalized.length,rejectedRows:rejected};
+ let minTime=Infinity,maxTime=-Infinity;data.forEach(r=>{const t=r.date.getTime();if(t<minTime)minTime=t;if(t>maxTime)maxTime=t});
+ dataMinDate=new Date(minTime);dataMaxDate=new Date(maxTime);
+ document.getElementById('dateFrom').value=dateInputValue(dataMinDate);document.getElementById('dateTo').value=dateInputValue(dataMaxDate);
+ document.getElementById('periodFilter').hidden=false;
+ applyDateRange();
+}
+async function applyDateRange(){
+ if(!data.length)return;
+ const from=dateFromInput(document.getElementById('dateFrom').value),to=dateFromInput(document.getElementById('dateTo').value);
+ if(from&&to&&from>to){document.getElementById('periodStatus').textContent='Start date must be on or before end date.';return}
+ const toExclusive=to?new Date(to.getFullYear(),to.getMonth(),to.getDate()+1):null;
+ const scoped=data.filter(r=>(!from||r.date>=from)&&(!toExclusive||r.date<toExclusive));
+ const version=++renderVersion;
+ try{await renderDashboard(scoped,version)}catch(error){console.error(error);document.getElementById('dataStatus').textContent='Could not refresh dashboard: '+error.message}
+}
+function resetDateRange(){
+ if(!data.length)return;
+ document.getElementById('dateFrom').value=dateInputValue(dataMinDate);
+ document.getElementById('dateTo').value=dateInputValue(dataMaxDate);
+ applyDateRange();
+}
+async function renderDashboard(scoped,version){
+ // Completed transactions only for commercial KPIs; cancellation and non-positive lines are excluded.
+ const sales=scoped.filter(r=>!/^C/i.test(r.invoice)&&r.qty>0&&r.price>0);
+ const cancellations=scoped.filter(r=>/^C/i.test(r.invoice)).length;
+ const nonPositive=scoped.filter(r=>!/^C/i.test(r.invoice)&&(r.qty<=0||r.price<=0)).length;
+ const missingCustomers=sales.filter(r=>r.customer==null).length;
+ document.getElementById('qualitySummary').innerHTML=`<div class="quality-item"><b>${num(sourceQuality.sourceRows)}</b><span>Source rows</span></div><div class="quality-item"><b>${num(scoped.length)}</b><span>Usable rows in selected dates</span></div><div class="quality-item"><b>${num(sourceQuality.rejectedRows)}</b><span>Rows rejected (missing key fields or invalid date)</span></div><div class="quality-item"><b>${num(cancellations)}</b><span>Cancellation rows excluded</span></div><div class="quality-item"><b>${num(nonPositive)}</b><span>Non-positive sale rows excluded</span></div><div class="quality-item"><b>${num(missingCustomers)}</b><span>Eligible sale rows without CustomerID</span></div>`;
+ document.getElementById('periodStatus').textContent=`${num(scoped.length)} rows in selected range`;
+ if(!sales.length){clearDashboard('No completed positive sales in this date range.');return}
+ const revenue=r=>r.qty*r.price;
+ const total=sales.reduce((a,r)=>a+revenue(r),0);
+ const invoices=new Set(sales.map(r=>r.invoice)).size;
+ const customers=new Set(sales.filter(r=>r.customer!=null).map(r=>r.customer)).size;
+ const monthly=aggregate(sales,r=>`${r.date.getFullYear()}-${String(r.date.getMonth()+1).padStart(2,'0')}`,revenue).sort((a,b)=>a[0].localeCompare(b[0]));
+ const regions=aggregate(sales,r=>r.region||'Unknown',revenue);
+ const products=aggregate(sales,r=>r.desc||r.stock,revenue);
+ advisorCache={total,invoices,customers,aov:total/Math.max(1,invoices),monthly,regions,products};
+ document.getElementById('kRevenue').textContent=money(total);document.getElementById('kOrders').textContent=num(invoices);document.getElementById('kCustomers').textContent=num(customers);document.getElementById('kAov').textContent=money(total/invoices);
+ document.getElementById('sRevenue').textContent=money(total);document.getElementById('sOrders').textContent=num(invoices);
+ document.getElementById('sUnits').textContent=num(sales.reduce((a,r)=>a+r.qty,0));document.getElementById('sItems').textContent=(sales.reduce((a,r)=>a+r.qty,0)/invoices).toFixed(1);
+ renderMonthly(sales,revenue);await yieldToUI();if(version!==renderVersion)return;
+ renderCountries(sales,revenue);await yieldToUI();if(version!==renderVersion)return;
+ renderProducts(sales,revenue);await yieldToUI();if(version!==renderVersion)return;
+ renderCustomers(sales,revenue);await yieldToUI();if(version!==renderVersion)return;
+ renderInsights(sales,revenue);renderGeo(sales,revenue);await yieldToUI();if(version!==renderVersion)return;
+ renderMarketing(sales,revenue);
+ document.getElementById('dataStatus').textContent=`${num(sales.length)} eligible sale rows • ${num(customers)} identified customers`;
+}
+function clearDashboard(message){
+ Object.keys(charts).forEach(id=>{destroy(id);delete charts[id]});
+ ['kRevenue','kOrders','kCustomers','kAov','sRevenue','sOrders','sUnits','sItems','avgCustomerValue','repeatRate','riskRevenue','topCustomerValue','champions','loyal','potential','risk'].forEach(id=>document.getElementById(id).textContent='—');
+ ['topProducts','productTable','geoTable','customerTable'].forEach(id=>document.getElementById(id).innerHTML='');
+ ['insights','segmentActions','marketingInsights'].forEach(id=>document.getElementById(id).innerHTML='');
+ document.getElementById('marketingPlaybook').innerHTML=message;document.getElementById('marketingPlaybook').classList.add('empty');
+ advisorCache=null;rfmSummary=[];customerSummary={};updateCampaignSegments();document.getElementById('dataStatus').textContent=message;
+}
+function aggregate(sales,key,calc){
+ const m=new Map();sales.forEach(r=>{let k=key(r);m.set(k,(m.get(k)||0)+calc(r))});return [...m.entries()].sort((a,b)=>b[1]-a[1]);
+}
+function destroy(id){if(charts[id])charts[id].destroy()}
+function makeChart(id,type,labels,values,label){
+ destroy(id);charts[id]=new Chart(document.getElementById(id),{type,data:{labels,datasets:[{label,data:values,borderWidth:2,fill:type==='line',tension:.3}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,ticks:{callback:v=>'£'+Math.round(v).toLocaleString()}}}}});
+}
+function renderMonthly(sales,revenue){
+ const a=aggregate(sales,r=>`${r.date.getFullYear()}-${String(r.date.getMonth()+1).padStart(2,'0')}`,revenue).sort((a,b)=>a[0].localeCompare(b[0]));
+ makeChart('monthlyChart','line',a.map(x=>x[0]),a.map(x=>x[1]),'Revenue');makeChart('salesTrend','line',a.map(x=>x[0]),a.map(x=>x[1]),'Revenue');
+}
+function renderCountries(sales,revenue){
+ const a=aggregate(sales,r=>r.region||'Unknown',revenue).slice(0,8);
+ makeChart('countryChart','bar',a.map(x=>x[0]),a.map(x=>x[1]),'Revenue');makeChart('salesCountry','bar',a.map(x=>x[0]),a.map(x=>x[1]),'Revenue');
+}
+function renderProducts(sales,revenue){
+ const map=new Map();sales.forEach(r=>{let k=r.desc||r.stock;if(!map.has(k))map.set(k,{rev:0,units:0,orders:new Set()});let x=map.get(k);x.rev+=revenue(r);x.units+=r.qty;x.orders.add(r.invoice)});
+ const a=[...map.entries()].map(([name,x])=>({name,...x,orders:x.orders.size})).sort((a,b)=>b.rev-a.rev).slice(0,25);
+ document.getElementById('topProducts').innerHTML=a.slice(0,10).map(x=>`<tr><td>${esc(x.name)}</td><td>${money(x.rev)}</td><td>${num(x.units)}</td></tr>`).join('');
+ document.getElementById('productTable').innerHTML=a.map(x=>`<tr><td>${esc(x.name)}</td><td>${money(x.rev)}</td><td>${num(x.units)}</td><td>${num(x.orders)}</td></tr>`).join('');
+}
+function makeQuantileScorer(values, reverse=false){
+ const sorted=[...values].sort((a,b)=>a-b);
+ return value=>{
+   // Match the prior first-rank scoring, but avoid sorting the full customer list
+   // separately for every customer (roughly 13,000 sorts on this dataset).
+   let low=0,high=sorted.length;
+   while(low<high){
+     const mid=(low+high)>>>1;
+     if(sorted[mid]<value)low=mid+1;else high=mid;
+   }
+   const pct=sorted.length<=1?1:low/(sorted.length-1);
+   const score=Math.min(5,Math.max(1,Math.ceil(pct*5)));
+   return reverse?6-score:score;
+ };
+}
+function renderCustomers(sales,revenue){
+ const by=new Map();
+ sales.filter(r=>r.customer!=null).forEach(r=>{
+   let id=r.customer;
+   if(!by.has(id))by.set(id,{last:r.date,freq:new Set(),money:0});
+   let x=by.get(id);
+   if(r.date>x.last)x.last=r.date;
+   x.freq.add(r.invoice);
+   x.money+=revenue(r);
+ });
+ const maxTime=sales.reduce((max,r)=>Math.max(max,r.date.getTime()),0);
+ const maxDate=new Date(maxTime);
+ let base=[...by.entries()].map(([id,x])=>({
+   id,rec:Math.max(0,Math.round((maxDate-x.last)/86400000)),
+   f:x.freq.size,m:x.money
+ }));
+ const recVals=base.map(x=>x.rec), freqVals=base.map(x=>x.f), moneyVals=base.map(x=>x.m);
+ const scoreRec=makeQuantileScorer(recVals,true), scoreFreq=makeQuantileScorer(freqVals), scoreMoney=makeQuantileScorer(moneyVals);
+ const rows=base.map(x=>{
+   const rs=scoreRec(x.rec), fs=scoreFreq(x.f), ms=scoreMoney(x.m);
+   let seg;
+   if(rs>=4&&fs>=4&&ms>=4) seg='Champions';
+   else if(rs>=3&&fs>=3&&ms>=3) seg='Loyal';
+   else if(rs>=3&&ms>=3) seg='Potential';
+   else if(rs<=2&&ms>=3) seg='At Risk';
+   else seg='Developing';
+   return {...x,rs,fs,ms,seg};
+ }).sort((a,b)=>b.m-a.m);
+
+ const counts={Champions:0,Loyal:0,Potential:0,'At Risk':0,Developing:0};
+ const revenueBySeg={Champions:0,Loyal:0,Potential:0,'At Risk':0,Developing:0};
+ rows.forEach(x=>{counts[x.seg]++;revenueBySeg[x.seg]+=x.m});
+ rfmSummary=Object.keys(counts).map(segment=>({segment,count:counts[segment],revenue:revenueBySeg[segment]}));
+
+ const totalCustomers=rows.length;
+ const repeat=rows.filter(x=>x.f>=2).length;
+ customerSummary={total:totalCustomers,repeat,repeatRate:repeat/Math.max(1,totalCustomers)*100,averageValue:rows.reduce((a,x)=>a+x.m,0)/Math.max(1,totalCustomers),atRiskRevenue:revenueBySeg['At Risk']};
+ document.getElementById('avgCustomerValue').textContent=money(rows.reduce((a,x)=>a+x.m,0)/Math.max(1,totalCustomers));
+ document.getElementById('repeatRate').textContent=(repeat/Math.max(1,totalCustomers)*100).toFixed(1)+'%';
+ document.getElementById('riskRevenue').textContent=money(revenueBySeg['At Risk']);
+ document.getElementById('topCustomerValue').textContent=money(rows[0]?.m||0);
+
+ ['Champions','Loyal','Potential','At Risk'].forEach((k,i)=>document.getElementById(['champions','loyal','potential','risk'][i]).textContent=num(counts[k]));
+
+ destroy('segmentChart');
+ charts.segmentChart=new Chart(document.getElementById('segmentChart'),{
+   type:'doughnut',
+   data:{labels:['Champions','Loyal','Potential','At Risk','Developing'],
+     datasets:[{data:[counts.Champions,counts.Loyal,counts.Potential,counts['At Risk'],counts.Developing],borderWidth:1}]},
+   options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom'}}}
+ });
+
+ document.getElementById('segmentActions').innerHTML=
+ `<div class="insight"><b>Champions:</b> ${num(counts.Champions)} customers — reward, retain and use for advocacy.</div>
+  <div class="insight"><b>Loyal:</b> ${num(counts.Loyal)} customers — cross-sell and strengthen loyalty.</div>
+  <div class="insight"><b>Potential:</b> ${num(counts.Potential)} customers — nurture toward higher frequency.</div>
+  <div class="insight"><b>At Risk:</b> ${num(counts['At Risk'])} customers — prioritize win-back campaigns.</div>`;
+
+ document.getElementById('customerTable').innerHTML=rows.slice(0,100).map(x=>
+   `<tr><td>${x.id}</td><td>${x.rec} days</td><td>${x.f}</td><td>${money(x.m)}</td><td>${x.rs}</td><td>${x.fs}</td><td>${x.ms}</td><td>${x.seg}</td></tr>`
+ ).join('');
+}
+
+function renderGeo(sales,revenue){
+ const total=sales.reduce((a,r)=>a+revenue(r),0);const map=new Map();
+ sales.forEach(r=>{let k=r.region||'Unknown';if(!map.has(k))map.set(k,{rev:0,orders:new Set(),customers:new Set()});let x=map.get(k);x.rev+=revenue(r);x.orders.add(r.invoice);if(r.customer!=null)x.customers.add(r.customer)});
+ const a=[...map.entries()].map(([region,x])=>({region,...x})).sort((a,b)=>b.rev-a.rev);
+ document.getElementById('geoTable').innerHTML=a.map(x=>`<tr><td>${esc(x.region)}</td><td>${money(x.rev)}</td><td>${num(x.orders.size)}</td><td>${num(x.customers.size)}</td><td>${(x.rev/total*100).toFixed(1)}%</td></tr>`).join('');
+}
+function renderInsights(sales,revenue){
+ const country=aggregate(sales,r=>r.region||'Unknown',revenue)[0];const product=aggregate(sales,r=>r.desc||r.stock,revenue)[0];
+ const monthly=aggregate(sales,r=>`${r.date.getFullYear()}-${r.date.getMonth()+1}`,revenue).sort((a,b)=>a[0].localeCompare(b[0]));
+ let growth='';if(monthly.length>1){let prev=monthly[monthly.length-2][1],last=monthly[monthly.length-1][1];growth=`Latest month revenue is ${((last-prev)/prev*100).toFixed(1)}% ${last>=prev?'higher':'lower'} than the previous month.`}
+ document.getElementById('insights').innerHTML=`<div class="insight"><b>Top region:</b> ${esc(country[0])} contributes ${money(country[1])} in revenue.</div><div class="insight"><b>Top product:</b> ${esc(product[0])} generates ${money(product[1])}.</div><div class="insight"><b>Trend:</b> ${growth||'Trend data is available after processing.'}</div>`;
+}
+function renderMarketing(sales,revenue){
+ const country=aggregate(sales,r=>r.region||'Unknown',revenue)[0];
+ const repeat=new Map();sales.filter(r=>r.customer!=null).forEach(r=>repeat.set(r.customer,(repeat.get(r.customer)||new Set()).add(r.invoice)));
+ const repeatCustomers=[...repeat.values()].filter(x=>x.size>1).length;
+ const recommendations={
+   Champions:{objective:'Protect high-value relationships',strategy:'VIP recognition and advocacy',channel:'Loyalty email',offer:'Early access or referral reward',priority:'Medium'},
+   Loyal:{objective:'Grow repeat value',strategy:'Cross-sell complementary products',channel:'Email and on-site',offer:'Relevant product bundle',priority:'Medium'},
+   Potential:{objective:'Encourage the next purchase',strategy:'Nurture toward repeat behavior',channel:'Welcome email series',offer:'Limited first-repeat incentive',priority:'High'},
+   'At Risk':{objective:'Win back lapsed customers',strategy:'Personalized reactivation',channel:'Email and retargeting',offer:'Time-limited comeback offer',priority:'High'},
+   Developing:{objective:'Learn preferences and build engagement',strategy:'Product discovery and education',channel:'Email and content',offer:'Low-cost discovery offer',priority:'Low'}
+ };
+ const playbook=document.getElementById('marketingPlaybook');
+ playbook.classList.remove('empty');
+ playbook.innerHTML=`<table class="playbook"><thead><tr><th>Customer segment</th><th>Customers</th><th>Segment revenue</th><th>Objective</th><th>Strategy</th><th>Channel</th><th>Offer</th><th>Priority</th></tr></thead><tbody>${rfmSummary.map(x=>{const a=recommendations[x.segment];return `<tr><td>${esc(x.segment)}</td><td>${num(x.count)}</td><td>${money(x.revenue)}</td><td>${esc(a.objective)}</td><td>${esc(a.strategy)}</td><td>${esc(a.channel)}</td><td>${esc(a.offer)}</td><td><span class="priority ${a.priority.toLowerCase()}">${a.priority}</span></td></tr>`}).join('')}</tbody></table>`;
+ updateCampaignSegments();
+ document.getElementById('marketingInsights').innerHTML=`<div class="grid equal"><div class="card"><div class="card-head"><h3>Retention Opportunity</h3></div><div class="insight">${num(repeatCustomers)} identified customers placed more than one order. Use the segment playbook to guide loyalty and cross-sell tests.</div></div><div class="card"><div class="card-head"><h3>Regional Opportunity</h3></div><div class="insight">${esc(country[0])} is the largest revenue region in the current dataset. Compare customer value with campaign costs before scaling spend.</div></div></div>`;
+}
+const CAMPAIGN_STORAGE_KEY='marketiq-campaign-log-v1';
+function updateCampaignSegments(){
+ const select=document.getElementById('campaignSegment');if(!select)return;
+ const previous=select.value;
+ select.innerHTML='<option value="All Customers">All Customers</option>'+rfmSummary.map(x=>`<option value="${esc(x.segment)}">${esc(x.segment)} (${num(x.count)})</option>`).join('');
+ if([...select.options].some(option=>option.value===previous))select.value=previous;
+}
+function money2(value){return '£'+Number(value).toLocaleString('en-GB',{minimumFractionDigits:2,maximumFractionDigits:2})}
+function signedMoney2(value){return `${value<0?'−':'+'}${money2(Math.abs(value))}`}
+function calculateCampaign(){
+ const name=document.getElementById('campaignName').value.trim();
+ const ids=['campaignPlanSpend','campaignPlanConversions','campaignPlanRevenue','campaignSpend','campaignImpressions','campaignClicks','campaignConversions','campaignRevenue'];
+ const raw=ids.map(id=>document.getElementById(id).value.trim());
+ const status=document.getElementById('campaignStatus');
+ if(!name||raw.some(v=>v==='')){status.textContent='Enter a campaign name and all plan/actual values';return false}
+ const [planSpend,planConversions,planRevenue,spend,impressions,clicks,conversions,revenue]=raw.map(Number);
+ const marginText=document.getElementById('campaignMarginPct').value.trim(),margin=marginText===''?null:Number(marginText);
+ if([planSpend,planConversions,planRevenue,spend,impressions,clicks,conversions,revenue].some(v=>!Number.isFinite(v)||v<0)||margin!==null&&(!Number.isFinite(margin)||margin<0||margin>100)){status.textContent='Use nonnegative values; contribution margin must be 0–100%';return false}
+ document.getElementById('campaignCtr').textContent=impressions>0?`${(clicks/impressions*100).toFixed(2)}%`:'—';
+ document.getElementById('campaignCpc').textContent=clicks>0?money2(spend/clicks):'—';
+ document.getElementById('campaignCac').textContent=conversions>0?money2(spend/conversions):'—';
+ document.getElementById('campaignRoas').textContent=spend>0?`${(revenue/spend).toFixed(2)}×`:'—';
+ document.getElementById('campaignRoi').textContent=spend>0?`${((revenue-spend)/spend*100).toFixed(1)}%`:'—';
+ document.getElementById('campaignContributionRoi').textContent=margin!==null&&spend>0?`${((revenue*margin/100-spend)/spend*100).toFixed(1)}%`:'—';
+ document.getElementById('campaignBudgetVariance').textContent=signedMoney2(spend-planSpend);
+ document.getElementById('campaignRevenueVariance').textContent=signedMoney2(revenue-planRevenue);
+ const conversionDelta=conversions-planConversions;
+ document.getElementById('campaignConversionVariance').textContent=`${conversionDelta<0?'−':'+'}${num(Math.abs(conversionDelta))}`;
+ status.textContent=clicks>impressions?'Check: clicks exceed impressions':(spend===0?'Calculated; ROAS/ROI unavailable when spend is zero':'Calculated from entered values');
+ return true;
+}
+function resetCampaign(){
+ ['campaignName','campaignPlanSpend','campaignPlanConversions','campaignPlanRevenue','campaignSpend','campaignImpressions','campaignClicks','campaignConversions','campaignRevenue','campaignMarginPct'].forEach(id=>document.getElementById(id).value='');
+ ['campaignCtr','campaignCpc','campaignCac','campaignRoas','campaignRoi','campaignContributionRoi','campaignBudgetVariance','campaignRevenueVariance','campaignConversionVariance'].forEach(id=>document.getElementById(id).textContent='—');
+ document.getElementById('campaignStatus').textContent='Waiting for inputs';
+}
+function getCampaignRecords(){try{return JSON.parse(localStorage.getItem(CAMPAIGN_STORAGE_KEY)||'[]')}catch(error){return []}}
+function renderCampaignLog(){
+ const body=document.getElementById('campaignLog');if(!body)return;
+ const records=getCampaignRecords().slice().reverse();
+ body.innerHTML=records.length?records.map(x=>`<tr><td>${esc(x.name)}</td><td>${esc(x.segment)}</td><td>${money2(x.planSpend)}</td><td>${money2(x.spend)}</td><td>${money2(x.planRevenue)}</td><td>${money2(x.revenue)}</td><td>${signedMoney2(x.revenue-x.planRevenue)}</td><td>${num(x.planConversions)}</td><td>${num(x.conversions)}</td><td>${x.spend>0?(x.revenue/x.spend).toFixed(2)+'×':'—'}</td><td>${esc(new Date(x.savedAt).toLocaleDateString())}</td></tr>`).join(''):'<tr><td colspan="11">No saved campaigns yet.</td></tr>';
+}
+function saveCampaignRecord(){
+ if(!calculateCampaign())return;
+ const records=getCampaignRecords();
+ const record={name:document.getElementById('campaignName').value.trim(),segment:document.getElementById('campaignSegment').value,planSpend:Number(document.getElementById('campaignPlanSpend').value),planConversions:Number(document.getElementById('campaignPlanConversions').value),planRevenue:Number(document.getElementById('campaignPlanRevenue').value),spend:Number(document.getElementById('campaignSpend').value),impressions:Number(document.getElementById('campaignImpressions').value),clicks:Number(document.getElementById('campaignClicks').value),conversions:Number(document.getElementById('campaignConversions').value),revenue:Number(document.getElementById('campaignRevenue').value),marginPct:document.getElementById('campaignMarginPct').value===''?null:Number(document.getElementById('campaignMarginPct').value),savedAt:new Date().toISOString()};
+ try{localStorage.setItem(CAMPAIGN_STORAGE_KEY,JSON.stringify([...records.slice(-249),record]));renderCampaignLog();document.getElementById('campaignStatus').textContent='Campaign saved in this browser';}
+ catch(error){document.getElementById('campaignStatus').textContent='Could not save locally; export or free browser storage.'}
+}
+function exportCampaignLog(){
+ const records=getCampaignRecords();if(!records.length){document.getElementById('campaignStatus').textContent='No saved campaigns to export';return}
+ const columns=['name','segment','planSpend','planConversions','planRevenue','spend','impressions','clicks','conversions','revenue','marginPct','savedAt'];
+ const csv=[columns.join(','),...records.map(row=>columns.map(key=>`"${String(row[key]??'').replace(/"/g,'""')}"`).join(','))].join('\r\n');
+ const url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'})),link=document.createElement('a');link.href=url;link.download='marketiq-campaign-log.csv';document.body.appendChild(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+renderCampaignLog();
+function askAdvisor(){
+ const q=document.getElementById('question').value.toLowerCase().trim();
+ const output=document.getElementById('answer');
+ if(!advisorCache){output.innerHTML='<div class="insight">Upload a dataset first. MARKETIQ will answer from the transaction rows you provide.</div>';return}
+ if(!q){output.innerHTML='<div class="insight">Enter a question or choose one of the examples above.</div>';return}
+ const topMatch=q.match(/\btop\s+(\d+)\b/), limit=topMatch?Math.max(1,Math.min(10,Number(topMatch[1]))):5;
+ const moneyList=(title,items)=>`<b>${title}</b><ol>${items.slice(0,limit).map(([name,value])=>`<li>${esc(name)} — ${money(value)}</li>`).join('')}</ol>`;
+ let answer='I can answer questions about total revenue, monthly trends, orders, average order value, top products, regions, repeat customers and RFM segments.';
+ const segment=rfmSummary.find(x=>q.includes(x.segment.toLowerCase())||(x.segment==='At Risk'&&(q.includes('at risk')||q.includes('at-risk')||q.includes('lapsed'))));
+ if(segment){
+   const share=customerSummary.total?segment.count/customerSummary.total*100:0;
+   answer=`<b>${esc(segment.segment)} customers:</b> ${num(segment.count)} (${share.toFixed(1)}% of identified customers), representing ${money(segment.revenue)} in net revenue.`;
+ }else if(q.includes('segment')||q.includes('rfm')){
+   const ranked=[...rfmSummary].sort((a,b)=>b.count-a.count);
+   answer=`<b>RFM segment distribution:</b><ol>${ranked.map(x=>`<li>${esc(x.segment)}: ${num(x.count)} customers, ${money(x.revenue)} revenue</li>`).join('')}</ol>`;
+ }else if(q.includes('repeat')||q.includes('retention')){
+   answer=`<b>Repeat customer rate:</b> ${customerSummary.repeatRate.toFixed(1)}% (${num(customerSummary.repeat)} of ${num(customerSummary.total)} identified customers placed multiple orders).`;
+ }else if(q.includes('average order')||q.includes('aov')){
+   answer=`<b>Average order value:</b> ${money(advisorCache.aov)} in net revenue per completed invoice.`;
+ }else if(q.includes('trend')||q.includes('growth')||q.includes('monthly')||q.includes('month')){
+   const months=advisorCache.monthly;
+   if(months.length>1){const [latestMonth,latestRevenue]=months[months.length-1],[priorMonth,priorRevenue]=months[months.length-2];const change=priorRevenue?((latestRevenue-priorRevenue)/priorRevenue*100):null;const peak=months.reduce((best,x)=>x[1]>best[1]?x:best,months[0]);answer=`<b>Monthly revenue:</b> ${latestMonth} closed at ${money(latestRevenue)}${change===null?'.':`, ${Math.abs(change).toFixed(1)}% ${change>=0?'above':'below'} ${priorMonth}.`} The strongest month was ${peak[0]} at ${money(peak[1])}.`}
+   else answer='There is not enough monthly history to compare trends.';
+ }else if(q.includes('region')||q.includes('country')||q.includes('market')){
+   if(q.match(/\btop\s+\d+\b/))answer=moneyList('Top regions by net revenue:',advisorCache.regions);
+   else{const [name,value]=advisorCache.regions[0];answer=`<b>Top region:</b> ${esc(name)} generated ${money(value)} in net revenue.`}
+ }else if(q.includes('product')||q.includes('item')){
+   if(q.match(/\btop\s+\d+\b/))answer=moneyList('Top products by net revenue:',advisorCache.products);
+   else{const [name,value]=advisorCache.products[0];answer=`<b>Top product by revenue:</b> ${esc(name)}, generating ${money(value)}.`}
+ }else if(q.includes('order')||q.includes('invoice')||q.includes('transaction')){
+   answer=`<b>Completed orders:</b> ${num(advisorCache.invoices)} unique invoices, excluding cancellation invoices and non-positive sales rows.`;
+ }else if(q.includes('customer')){
+   answer=`<b>Identified customers:</b> ${num(advisorCache.customers)}. Average net revenue per identified customer is ${money(customerSummary.averageValue)}.`;
+ }else if(q.includes('revenue')||q.includes('sales')){
+   answer=`<b>Net revenue:</b> ${money(advisorCache.total)}. This excludes cancellation invoices and non-positive sales rows.`;
+ }
+ output.innerHTML=`<div class="insight">${answer}</div>`;
+}
+function suggestAdvisor(question){document.getElementById('question').value=question;askAdvisor()}
+function esc(s){return String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]))}
+const XLSX_WORKER_URL='https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';
+const XLSX_WORKER_SOURCE=`importScripts('${XLSX_WORKER_URL}');
+self.onmessage=function(event){try{
+ const buffer=event.data.buffer,extension=event.data.extension;
+ const workbook=extension==='csv'?XLSX.read(new TextDecoder().decode(buffer).replace(/^\\uFEFF/,''),{type:'string'}):XLSX.read(buffer,{type:'array'});
+ const sheet=workbook.Sheets[workbook.SheetNames[0]],rows=XLSX.utils.sheet_to_json(sheet,{defval:''});
+ self.postMessage({type:'start',total:rows.length,headers:Object.keys(rows[0]||{})});
+ const size=12000;
+ for(let start=0;start<rows.length;start+=size){const end=Math.min(rows.length,start+size);self.postMessage({type:'chunk',processed:end,total:rows.length,rows:rows.slice(start,end)});}
+ self.postMessage({type:'done',total:rows.length});
+}catch(error){self.postMessage({type:'error',message:error&&error.message?error.message:'Workbook parsing failed'});}};`;
+function validateColumns(rows){
+ const headers=Object.keys(rows[0]||{}).map(x=>x.replace(/^\uFEFF/,'').trim());
+ const required=['InvoiceNo','Quantity','InvoiceDate','UnitPrice'];
+ const missing=required.filter(name=>!headers.includes(name));
+ if(!headers.includes('StockCode')&&!headers.includes('Description'))missing.push('StockCode or Description');
+ if(missing.length)throw new Error('Missing required columns: '+missing.join(', '));
+}
+function validateFileBuffer(buffer,extension){
+ const bytes=new Uint8Array(buffer,0,Math.min(8,buffer.byteLength));
+ if(extension==='xlsx'&&!(bytes[0]===0x50&&bytes[1]===0x4b))throw new Error('This file does not have a valid .xlsx signature.');
+ if(extension==='xls'&&!(bytes[0]===0xd0&&bytes[1]===0xcf&&bytes[2]===0x11&&bytes[3]===0xe0))throw new Error('This file does not have a valid .xls signature.');
+ if(extension==='csv'){
+   const preview=new TextDecoder().decode(buffer.slice(0,Math.min(4096,buffer.byteLength)));
+   if(preview.includes('\0'))throw new Error('This does not look like a text CSV file.');
+ }
+}
+function parseWorkbookOnMain(buffer,extension){
+ if(typeof XLSX==='undefined')throw new Error('The spreadsheet parser could not load. Check your internet connection and try again.');
+ const workbook=extension==='csv'?XLSX.read(new TextDecoder().decode(buffer).replace(/^\uFEFF/,''),{type:'string'}):XLSX.read(buffer,{type:'array'});
+ const rows=XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]],{defval:''});
+ validateColumns(rows);return rows;
+}
+function parseWorkbookInWorker(buffer,extension){
+ return new Promise((resolve,reject)=>{
+   let worker,url,normalized=[],rejected=0,total=0,settled=false;
+   const cleanup=()=>{if(worker)worker.terminate();if(url)URL.revokeObjectURL(url)};
+   const fail=error=>{if(settled)return;settled=true;cleanup();reject(error instanceof Error?error:new Error(String(error)))};
+   try{
+     url=URL.createObjectURL(new Blob([XLSX_WORKER_SOURCE],{type:'text/javascript'}));worker=new Worker(url);
+     worker.onmessage=event=>{
+       if(settled)return;
+       const msg=event.data||{};
+       if(msg.type==='start'){
+         total=msg.total;
+         try{validateColumns([Object.fromEntries((msg.headers||[]).map(h=>[h,'']))])}catch(error){fail(error);return}
+         document.getElementById('dataStatus').textContent=`Reading ${num(total)} rows in background…`;
+       }else if(msg.type==='chunk'){
+         rejected+=normalizeChunk(msg.rows,normalized);
+         document.getElementById('dataStatus').textContent=`Checking ${num(msg.processed)} of ${num(msg.total)} rows…`;
+       }else if(msg.type==='error')fail(new Error(msg.message));
+       else if(msg.type==='done'&&!settled){settled=true;cleanup();resolve({normalized,rejected,total:msg.total})}
+     };
+     worker.onerror=event=>fail(new Error(event.message||'Background workbook processing failed'));
+     worker.postMessage({buffer,extension});
+   }catch(error){fail(error)}
+ });
+}
+function uploadError(error){
+ console.error(error);
+ const message=error&&error.message?error.message:'Unknown file error';
+ document.getElementById('dataStatus').textContent='Could not load file';
+ alert('MARKETIQ could not process this file. '+message);
+}
+document.getElementById('fileInput').addEventListener('change',async e=>{
+ const file=e.target.files[0];if(!file)return;
+ const extension=file.name.toLowerCase().split('.').pop();
+ if(!['xlsx','xls','csv'].includes(extension)){uploadError(new Error('Choose an .xlsx, .xls or .csv file.'));e.target.value='';return}
+ if(file.size>75*1024*1024){uploadError(new Error('Files must be 75 MB or smaller.'));e.target.value='';return}
+ const reader=new FileReader();
+ reader.onprogress=event=>{if(event.lengthComputable)document.getElementById('dataStatus').textContent=`Reading file ${Math.round(event.loaded/event.total*100)}%…`};
+ reader.onerror=()=>{uploadError(new Error('The selected file could not be read.'));e.target.value=''};
+ reader.onload=async event=>{
+   try{
+     const buffer=event.target.result;validateFileBuffer(buffer,extension);
+     document.getElementById('dataStatus').textContent='Checking workbook columns…';await yieldToUI();
+     try{
+       const result=await parseWorkbookInWorker(buffer,extension);
+       finishRows(result.normalized,result.rejected,result.total);
+     }catch(workerError){
+       document.getElementById('dataStatus').textContent='Using the compatibility parser…';await yieldToUI();
+       const rows=parseWorkbookOnMain(buffer,extension);await process(rows);
+     }
+   }catch(error){uploadError(error)}
+   finally{e.target.value=''}
+ };
+ reader.readAsArrayBuffer(file);
+});
+/* Load the provided UCI dataset automatically when served from the same project folder.
+   For portability, the public app starts in an empty/demo state until a file is uploaded. */
+</script>
+</body>
+</html>
